@@ -12,7 +12,7 @@ module.exports = {
   networks: {
     hardhat: {
       forking: {
-        url: `https://mainnet.infura.io/v3/${process.env.API_KEY}`,
+        url: `https://mainnet.infura.io/v3/${process.env.MUMBAI_ALCHEMY_API_KEY}`,
       },
     },
   },

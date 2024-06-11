@@ -46,14 +46,14 @@ describe("SubscriptionPlugin with Algebra Integration", function () {
         await paymentToken.connect(addr1).approve(subscriptionPlugin.getAddress(), ethers.parseUnits("10", 18));
         await subscriptionPlugin.connect(addr1).subscribe();
 
-        const expiration = await subscriptionPlugin.subscriptions(addr1.address);
+        const expiration = await subscriptionPlugin.s_subscriptions(addr1.address);
         expect(expiration).to.be.gt(0);
 
         await paymentToken.connect(addr1).approve(swapRouter.getAddress(), ethers.parseUnits("10", 18));
         await swapRouter.connect(addr1).swapExactInputSingle({
-            tokenIn: paymentToken.getAddress(),
-            tokenOut: paymentToken.getAddress(),
-            recipient: addr1.getAddress(),
+            tokenIn: await paymentToken.getAddress(),
+            tokenOut: await paymentToken.getAddress(),
+            recipient: await addr1.getAddress(),
             deadline: Math.floor(Date.now() / 1000) + 60 * 10,
             amountIn: ethers.parseUnits("10", 18),
             amountOutMinimum: 0,
@@ -64,14 +64,29 @@ describe("SubscriptionPlugin with Algebra Integration", function () {
     it("should revert swap if not subscribed", async function () {
         await expect(
             swapRouter.connect(addr2).swapExactInputSingle({
-                tokenIn: paymentToken.getAddress(),
-                tokenOut: paymentToken.getAddress(),
-                recipient: addr2.getAddress(),
+                tokenIn: await paymentToken.getAddress(),
+                tokenOut: await paymentToken.getAddress(),
+                recipient: await addr2.getAddress(),
                 deadline: Math.floor(Date.now() / 1000) + 60 * 10,
                 amountIn: ethers.parseUnits("10", 18),
                 amountOutMinimum: 0,
                 limitSqrtPrice: 0
             })
-        ).to.be.revertedWith("Subscription required");
+        ).to.be.revertedWithCustomError(subscriptionPlugin, "SubscriptionRequired");
+    });
+
+    it("should revert if already subscribed", async function () {
+        // Approve and subscribe the first time
+        await paymentToken.connect(addr1).approve(await subscriptionPlugin.getAddress(), ethers.parseUnits("10", 18));
+        await subscriptionPlugin.connect(addr1).subscribe();
+
+        // Try to subscribe again before expiration
+        await expect(subscriptionPlugin.connect(addr1).subscribe()).to.be.revertedWithCustomError(subscriptionPlugin, "AlreadySubscribed");
+    });
+
+    it("should revert onCollect if not subscribed", async function () {
+        await expect(
+            subscriptionPlugin.onCollect(addr2.address, 0, 0, "0x")
+        ).to.be.revertedWithCustomError(subscriptionPlugin, "SubscriptionRequired");
     });
 });

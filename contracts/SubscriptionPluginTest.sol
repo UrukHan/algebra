@@ -24,9 +24,12 @@ contract SubscriptionPluginTest {
     }
 
     function testSubscribeAndSwap(uint256 amountIn) external {
-
+        // Approve and subscribe
         paymentToken.approve(address(subscriptionPlugin), amountIn);
         subscriptionPlugin.subscribe();
+
+        // Ensure the subscription is successful before swapping
+        require(subscriptionPlugin.s_subscriptions(msg.sender) > block.timestamp, "Subscription not found");
 
         TransferHelper.safeTransferFrom(address(paymentToken), msg.sender, address(this), amountIn);
         TransferHelper.safeApprove(address(paymentToken), address(swapRouter), amountIn);
